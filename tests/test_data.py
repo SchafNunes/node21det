@@ -5,7 +5,7 @@ import SimpleITK as sitk
 import torch
 
 from node21det.data.dataset import NoduleDataset, read_image
-from node21det.data.dedup import group_pairs, near_duplicate_pairs, phash
+from node21det.data.dedup import group_pairs, near_duplicate_pairs, thumbnail
 from node21det.data.metadata import boxes_by_image, image_table, load_metadata
 from node21det.data.splits import make_splits, select
 from node21det.data.transforms import RandomBrightnessContrast, RandomHorizontalFlip
@@ -79,13 +79,14 @@ def test_folds_cover_selection_pool_only():
     assert len(select(s, exclude_folds=[])) == len(pool)
 
 
-def test_phash_groups_near_duplicates():
+def test_correlation_groups_near_duplicates():
     rng = np.random.default_rng(0)
-    base = rng.random((128, 128))
-    near = base + rng.normal(0, 0.01, base.shape)
-    other = rng.random((128, 128))
+    base = rng.random((256, 256))
+    near = base * 0.9 + 0.05 + rng.normal(0, 0.005, base.shape)  # mesma imagem, intensidade reescalada
+    other = rng.random((256, 256))
     names = ["a", "b", "c"]
-    pairs = near_duplicate_pairs(names, [phash(base), phash(near), phash(other)], max_distance=6)
+    thumbs = np.stack([thumbnail(x) for x in (base, near, other)])
+    pairs = near_duplicate_pairs(names, thumbs, min_corr=0.99)
     assert [(a, b) for a, b, _ in pairs] == [("a", "b")]
     assert group_pairs(names, pairs) == {"a": "a", "b": "a", "c": "c"}
 

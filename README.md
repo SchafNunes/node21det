@@ -20,7 +20,7 @@ uv run pytest
 
 ```
 # 1. duplicatas aproximadas (CPU, uma vez)
-python scripts/find_duplicates.py --images DATA/images --metadata DATA/metadata.csv --out-dir splits/
+python scripts/find_duplicates.py --images DATA/images --metadata DATA/metadata.csv --min-corr 0.99 --out-dir splits/
 
 # 2. partições (uma vez; o arquivo vai para o git)
 python scripts/make_splits.py --metadata DATA/metadata.csv --groups splits/dup_groups.csv --out splits/splits.csv

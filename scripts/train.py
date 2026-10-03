@@ -29,6 +29,13 @@ from node21det.models import build_detector
 from node21det.training import evaluate_loader, fit, seed_everything
 
 
+def _limit(names: list[str], positive: dict[str, bool], n: int) -> list[str]:
+    """Amostra de teste rápido: metade positivas, metade negativas, nas primeiras posições."""
+    pos = [x for x in names if positive[x]][: n // 2]
+    neg = [x for x in names if not positive[x]][: n - len(pos)]
+    return pos + neg
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--config", required=True)
@@ -39,7 +46,8 @@ def main():
     p.add_argument("--metadata", required=True)
     p.add_argument("--splits", required=True)
     p.add_argument("--out", required=True)
-    p.add_argument("--limit", type=int, help="usa só as N primeiras imagens de cada conjunto (teste rápido)")
+    p.add_argument("--limit", type=int, help="usa só N imagens de cada conjunto, metade positivas (teste rápido)")
+    p.add_argument("--max-epochs", type=int, help="sobrepõe train.max_epochs do YAML (teste rápido)")
     args = p.parse_args()
 
     cfg = load_config(args.config)
@@ -63,7 +71,8 @@ def main():
     else:
         train_names, val_names = select(splits, exclude_folds=[]), []
     if args.limit:
-        train_names, val_names = train_names[: args.limit], val_names[: args.limit]
+        positive = dict(zip(splits["img_name"], splits["positive"]))
+        train_names, val_names = _limit(train_names, positive, args.limit), _limit(val_names, positive, args.limit)
     print(f"treino: {len(train_names)} imagens | avaliação: {len(val_names)} imagens")
 
     t = cfg.train
@@ -80,7 +89,7 @@ def main():
                            m.score_threshold, m.detections_per_image, m.min_size, m.max_size)
 
     if args.mode == "select":
-        state = fit(cfg, model, train_loader, eval_loader, args.out, device)
+        state = fit(cfg, model, train_loader, eval_loader, args.out, device, max_epochs=args.max_epochs)
         print(f"melhor época: {state['best_epoch']} (rank={state['best_metric']:.4f})")
     else:
         fit(cfg, model, train_loader, None, args.out, device, max_epochs=args.epochs)

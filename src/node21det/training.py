@@ -160,6 +160,8 @@ def fit(cfg: RunConfig, model, train_loader, val_loader, out_dir, device, max_ep
             metrics = evaluate_loader(model, val_loader, device)
             row.update({f"val_{k}": v for k, v in metrics.items()})
             value = metrics[SELECTION_METRIC]
+            if not math.isfinite(value):
+                raise ValueError(f"métrica de seleção não finita na época {epoch}: {metrics}")
             if value > state["best_metric"]:
                 state.update(best_metric=value, best_epoch=epoch, bad_epochs=0)
                 _atomic_save({"model": model.state_dict(), "epoch": epoch, "metrics": metrics}, out_dir / "best.pt")
