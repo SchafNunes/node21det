@@ -7,6 +7,7 @@ from node21det.evaluation import (
     evaluate,
     froc,
     image_scores,
+    image_scores_outside_nodules,
     iou_matrix,
     match_image,
     roc_auc,
@@ -107,3 +108,10 @@ def test_rank_combines_auc_and_sensitivity():
     assert m["auc"] == 1.0 and m["sens@0.25"] == 1.0
     assert m["rank"] == pytest.approx(1.0)
     assert m["n_lesions"] == 1
+
+
+def test_outside_nodules_ignores_predictions_touching_a_nodule():
+    p = pred([[0, 0, 10, 10], [9, 9, 30, 30], [50, 50, 60, 60]], [0.9, 0.8, 0.3])
+    # as duas primeiras tocam o nódulo (a segunda com IoU baixo, mas > 0); só a terceira conta
+    assert image_scores_outside_nodules([p], [GT]).tolist() == [0.3]
+    assert image_scores_outside_nodules([p], [np.zeros((0, 4))]).tolist() == [0.9]

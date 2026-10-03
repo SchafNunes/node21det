@@ -108,6 +108,21 @@ def image_scores(preds: list[Prediction]) -> np.ndarray:
     return np.array([float(p.scores.max()) if len(p.scores) else 0.0 for p in preds])
 
 
+def image_scores_outside_nodules(preds: list[Prediction], gts: list[np.ndarray]) -> np.ndarray:
+    """Escore da imagem contando só predições que não tocam nenhuma caixa de referência.
+
+    Diagnóstico de atalho: se a AUC com esse escore ficar bem acima de 0,5, o
+    modelo separa positivas de negativas por algo fora dos nódulos.
+    """
+    out = []
+    for p, g in zip(preds, gts, strict=True):
+        keep = np.ones(len(p.scores), dtype=bool)
+        if len(g) and len(p.scores):
+            keep = iou_matrix(p.boxes, g).max(axis=1) == 0
+        out.append(float(p.scores[keep].max()) if keep.any() else 0.0)
+    return np.array(out)
+
+
 def roc_auc(scores: np.ndarray, labels: np.ndarray) -> float:
     """AUC por Mann-Whitney, empates contam meio."""
     labels = np.asarray(labels, dtype=bool)
@@ -121,7 +136,8 @@ def roc_auc(scores: np.ndarray, labels: np.ndarray) -> float:
 
 def evaluate(preds: list[Prediction], gts: list[np.ndarray]) -> dict:
     curve = froc(preds, gts)
-    auc = roc_auc(image_scores(preds), np.array([len(g) > 0 for g in gts]))
+    positive = np.array([len(g) > 0 for g in gts])
+    auc = roc_auc(image_scores(preds), positive)
     sens = {f"sens@{r:g}": curve.sensitivity_at(r) for r in FP_RATES}
     s = curve.sensitivity_at(RANK_FP_RATE)
     return {
@@ -129,6 +145,7 @@ def evaluate(preds: list[Prediction], gts: list[np.ndarray]) -> dict:
         "auc": auc,
         **sens,
         "ap@0.2": average_precision(preds, gts),
+        "auc_outside_nodules": roc_auc(image_scores_outside_nodules(preds, gts), positive),
         "n_images": len(preds),
         "n_lesions": sum(len(g) for g in gts),
     }
