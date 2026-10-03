@@ -107,7 +107,16 @@ def test_rank_combines_auc_and_sensitivity():
     m = evaluate(preds, [GT, np.zeros((0, 4))])
     assert m["auc"] == 1.0 and m["sens@0.25"] == 1.0
     assert m["rank"] == pytest.approx(1.0)
+    assert m["mean_sens"] == pytest.approx(1.0)
     assert m["n_lesions"] == 1
+
+
+def test_mean_sens_averages_the_three_fp_rates():
+    # mesmo cenário da interpolação: sens 0.625, 0.75 e 1.0 em 1/8, 1/4 e 1/2
+    gts = [GT, GT.copy(), np.zeros((0, 4)), np.zeros((0, 4))]
+    preds = [pred([[0, 0, 10, 10]], [0.9]), pred([[0, 0, 10, 10]], [0.3]),
+             pred([[0, 0, 1, 1]], [0.3]), pred([[0, 0, 1, 1]], [0.3])]
+    assert evaluate(preds, gts)["mean_sens"] == pytest.approx((0.625 + 0.75 + 1.0) / 3)
 
 
 def test_outside_nodules_ignores_predictions_touching_a_nodule():

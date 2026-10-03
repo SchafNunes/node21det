@@ -141,6 +141,7 @@ def evaluate(preds: list[Prediction], gts: list[np.ndarray]) -> dict:
     sens = {f"sens@{r:g}": curve.sensitivity_at(r) for r in FP_RATES}
     s = curve.sensitivity_at(RANK_FP_RATE)
     return {
+        "mean_sens": float(np.mean(list(sens.values()))),
         "rank": 0.75 * auc + 0.25 * s,
         "auc": auc,
         **sens,

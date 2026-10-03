@@ -82,6 +82,14 @@ _Evite_: probabilidade da imagem
 Fração de nódulos encontrados no ponto da curva FROC com r falsos positivos por radiografia, lida em 1/8, 1/4 e 1/2.
 _Evite_: recall (sozinho)
 
-**Métrica de seleção** (`rank`):
-0,75 x AUC + 0,25 x sensibilidade a 0,25 FP/imagem, na validação. Decide arquitetura, realce, interrupção antecipada e melhor época.
+**Métrica de seleção** (`mean_sens`):
+Média das sensibilidades a 1/8, 1/4 e 1/2 FP/imagem, na validação. Decide arquitetura, realce, interrupção antecipada e melhor época.
 _Evite_: score, métrica composta (sem qualificar), "melhor desempenho"
+
+**Métrica do desafio** (`rank`):
+0,75 x AUC + 0,25 x sensibilidade a 0,25 FP/imagem. Reportada para comparar com o NODE21; não seleciona.
+_Evite_: métrica de seleção
+
+**AUC fora dos nódulos** (`auc_outside_nodules`):
+AUC em nível de imagem usando só predições sem sobreposição com caixas de referência. Mede quanto da separação entre positivas e negativas não vem dos nódulos.
+_Evite_: AUC de controle

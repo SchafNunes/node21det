@@ -88,7 +88,7 @@ def test_fit_writes_history_and_resumes(tiny_data, tmp_path):
     assert state["epoch"] == 1
     hist = pd.read_csv(out / "history.csv")
     assert hist["epoch"].tolist() == [0, 1]
-    assert {"val_rank", "val_auc", "val_sens@0.25", "train_loss"} <= set(hist.columns)
+    assert {"val_mean_sens", "val_rank", "val_auc", "val_auc_outside_nodules", "val_sens@0.25", "train_loss"} <= set(hist.columns)
 
 
 def test_fit_early_stopping(tiny_data, tmp_path):

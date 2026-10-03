@@ -24,7 +24,10 @@ import yaml
 from .config import RunConfig
 from .evaluation import Prediction, evaluate
 
-SELECTION_METRIC = "rank"
+# Sensibilidade média da FROC em 1/8, 1/4 e 1/2 FP por imagem. O rank do desafio
+# continua calculado e reportado, mas não seleciona: a AUC por imagem, 75% dele,
+# é afetada por um atalho de origem das imagens (Tcc/EXPERIMENTOS.md, E7).
+SELECTION_METRIC = "mean_sens"
 
 
 def seed_everything(seed: int):
@@ -190,6 +193,7 @@ def fit(cfg: RunConfig, model, train_loader, val_loader, out_dir, device, max_ep
         )
         msg = f"[época {epoch}] loss={row['train_loss']:.4f} ({row['train_seconds']/60:.1f} min)"
         if val_loader is not None:
-            msg += f" val rank={row['val_rank']:.4f} auc={row['val_auc']:.4f} sens@0.25={row['val_sens@0.25']:.4f}"
+            msg += (f" val mean_sens={row['val_mean_sens']:.4f} sens@0.25={row['val_sens@0.25']:.4f}"
+                    f" rank={row['val_rank']:.4f} auc={row['val_auc']:.4f} auc_fora={row['val_auc_outside_nodules']:.4f}")
         print(msg, flush=True)
     return state

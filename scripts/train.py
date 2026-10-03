@@ -90,7 +90,7 @@ def main():
 
     if args.mode == "select":
         state = fit(cfg, model, train_loader, eval_loader, args.out, device, max_epochs=args.max_epochs)
-        print(f"melhor época: {state['best_epoch']} (rank={state['best_metric']:.4f})")
+        print(f"melhor época: {state['best_epoch']} (mean_sens={state['best_metric']:.4f})")
     else:
         fit(cfg, model, train_loader, None, args.out, device, max_epochs=args.epochs)
         if args.mode == "fold":
