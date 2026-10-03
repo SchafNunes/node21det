@@ -62,6 +62,8 @@ def train_one_epoch(model, optimizer, loader, device, scaler, warmup=None, log_e
     model.train()
     totals, n = {}, 0
     start = time.time()
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats(device)
     for it, (images, targets) in enumerate(loader):
         images = [img.to(device) for img in images]
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
@@ -84,6 +86,8 @@ def train_one_epoch(model, optimizer, loader, device, scaler, warmup=None, log_e
             print(f"  iter {it}/{len(loader)} loss={loss.item():.4f} lr={optimizer.param_groups[0]['lr']:.2e}", flush=True)
     out = {f"train_{k}": v / max(n, 1) for k, v in totals.items()}
     out["train_seconds"] = time.time() - start
+    if device.type == "cuda":
+        out["gpu_peak_gb"] = torch.cuda.max_memory_allocated(device) / 2**30
     return out
 
 
