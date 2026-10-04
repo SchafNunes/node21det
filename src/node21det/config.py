@@ -21,6 +21,7 @@ class ModelConfig:
     min_size: int = 800
     max_size: int = 1333
     retinanet_loss_normalization: str = "batch"  # "image" = padrão do torchvision (E9)
+    retinanet_head_norm: str = "none"  # "group" = GroupNorm nas torres da cabeça (E10)
 
 
 @dataclass
@@ -31,6 +32,7 @@ class OptimConfig:
     warmup_factor: float = 1e-3  # aquecimento linear na primeira época, como no baseline
     lr_step_epochs: int = 10
     lr_gamma: float = 0.1
+    grad_clip_norm: float | None = None  # recorte da norma do gradiente (E10)
 
 
 @dataclass

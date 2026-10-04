@@ -21,11 +21,13 @@ denominador que ele usa).
 """
 
 import types
+from functools import partial
 
 import torch
 from torch import nn
 from torchvision.models import ResNet50_Weights
 from torchvision.models.detection import fasterrcnn_resnet50_fpn, retinanet_resnet50_fpn
+from torchvision.models.detection.retinanet import RetinaNetHead
 from torchvision.models.detection._utils import _box_loss
 from torchvision.ops import sigmoid_focal_loss
 
@@ -77,6 +79,7 @@ def build_detector(
     min_size: int = 800,
     max_size: int = 1333,
     retinanet_loss_normalization: str = "batch",
+    retinanet_head_norm: str = "none",
 ) -> Detector:
     weights_backbone = ResNet50_Weights.IMAGENET1K_V1 if pretrained_backbone else None
     common = dict(
@@ -103,6 +106,12 @@ def build_detector(
             detections_per_img=detections_per_image,
             **common,
         )
+        if retinanet_head_norm == "group":
+            # GroupNorm nas torres da cabeça, como na retinanet_resnet50_fpn_v2 do torchvision
+            num_anchors = net.anchor_generator.num_anchors_per_location()[0]
+            net.head = RetinaNetHead(net.backbone.out_channels, num_anchors, 1, norm_layer=partial(nn.GroupNorm, 32))
+        elif retinanet_head_norm != "none":
+            raise ValueError(f"retinanet_head_norm: 'none' ou 'group', veio {retinanet_head_norm!r}")
         if retinanet_loss_normalization == "batch":
             head = net.head
             head.classification_head.compute_loss = types.MethodType(_classification_loss_batch, head.classification_head)

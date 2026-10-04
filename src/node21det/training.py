@@ -61,7 +61,7 @@ def _atomic_save(obj, path: Path):
     os.replace(tmp, path)
 
 
-def train_one_epoch(model, optimizer, loader, device, scaler, warmup=None, log_every=50):
+def train_one_epoch(model, optimizer, loader, device, scaler, warmup=None, log_every=50, grad_clip_norm=None):
     model.train()
     totals, n, skipped = {}, 0, 0
     start = time.time()
@@ -77,6 +77,9 @@ def train_one_epoch(model, optimizer, loader, device, scaler, warmup=None, log_e
             raise FloatingPointError(f"perda não finita na iteração {it}: { {k: v.item() for k, v in losses.items()} }")
         optimizer.zero_grad(set_to_none=True)
         scaler.scale(loss).backward()
+        if grad_clip_norm:
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_([p for g in optimizer.param_groups for p in g["params"]], grad_clip_norm)
         scale_before = scaler.get_scale() if scaler.is_enabled() else 1.0
         scaler.step(optimizer)
         scaler.update()
@@ -165,7 +168,8 @@ def fit(cfg: RunConfig, model, train_loader, val_loader, out_dir, device, max_ep
         if epoch == 0:
             warmup = _warmup(optimizer, max(1, min(1000, len(train_loader) - 1)), o.warmup_factor)
         row = {"epoch": epoch, "lr": optimizer.param_groups[0]["lr"]}
-        row.update(train_one_epoch(model, optimizer, train_loader, device, scaler, warmup))
+        row.update(train_one_epoch(model, optimizer, train_loader, device, scaler, warmup,
+                                   grad_clip_norm=o.grad_clip_norm))
         lr_scheduler.step()
 
         if val_loader is not None:

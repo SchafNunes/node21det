@@ -87,7 +87,7 @@ def main():
     m = cfg.model
     model = build_detector(m.arch, m.pretrained_backbone, m.trainable_backbone_layers, m.nms_threshold,
                            m.score_threshold, m.detections_per_image, m.min_size, m.max_size,
-                           m.retinanet_loss_normalization)
+                           m.retinanet_loss_normalization, m.retinanet_head_norm)
 
     if args.mode == "select":
         state = fit(cfg, model, train_loader, eval_loader, args.out, device, max_epochs=args.max_epochs)
