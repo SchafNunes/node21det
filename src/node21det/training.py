@@ -63,7 +63,7 @@ def _atomic_save(obj, path: Path):
 
 def train_one_epoch(model, optimizer, loader, device, scaler, warmup=None, log_every=50):
     model.train()
-    totals, n = {}, 0
+    totals, n, skipped = {}, 0, 0
     start = time.time()
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats(device)
@@ -77,8 +77,11 @@ def train_one_epoch(model, optimizer, loader, device, scaler, warmup=None, log_e
             raise FloatingPointError(f"perda não finita na iteração {it}: { {k: v.item() for k, v in losses.items()} }")
         optimizer.zero_grad(set_to_none=True)
         scaler.scale(loss).backward()
+        scale_before = scaler.get_scale() if scaler.is_enabled() else 1.0
         scaler.step(optimizer)
         scaler.update()
+        if scaler.is_enabled() and scaler.get_scale() < scale_before:
+            skipped += 1  # gradiente não finito em fp16: o passo foi descartado
         if warmup is not None:
             warmup.step()
         for k, v in losses.items():
@@ -89,6 +92,8 @@ def train_one_epoch(model, optimizer, loader, device, scaler, warmup=None, log_e
             print(f"  iter {it}/{len(loader)} loss={loss.item():.4f} lr={optimizer.param_groups[0]['lr']:.2e}", flush=True)
     out = {f"train_{k}": v / max(n, 1) for k, v in totals.items()}
     out["train_seconds"] = time.time() - start
+    out["amp_skipped_steps"] = skipped
+    out["amp_scale"] = scaler.get_scale() if scaler.is_enabled() else 1.0
     if device.type == "cuda":
         out["gpu_peak_gb"] = torch.cuda.max_memory_allocated(device) / 2**30
     return out
