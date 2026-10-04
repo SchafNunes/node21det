@@ -101,3 +101,34 @@ def test_fit_early_stopping(tiny_data, tmp_path):
 def test_fit_without_validation_runs_fixed_epochs(tiny_data, tmp_path):
     state = fit(_cfg(), _model(), tiny_data, None, tmp_path / "run", torch.device("cpu"), max_epochs=2)
     assert state["epoch"] == 1 and state["best_epoch"] == -1
+
+
+def test_retinanet_batch_normalization_weights_negatives_by_batch_foreground():
+    """Uma positiva e uma negativa: a perda em lote é (soma das duas) / âncoras positivas do lote."""
+    torch.manual_seed(0)
+    images = [torch.rand(1, 128, 128), torch.rand(1, 128, 128)]
+    targets = [
+        {"boxes": torch.tensor([[10.0, 10, 60, 60]]), "labels": torch.tensor([1])},
+        {"boxes": torch.zeros(0, 4), "labels": torch.zeros(0, dtype=torch.int64)},
+    ]
+    by_image = build_detector("retinanet", **SMALL, retinanet_loss_normalization="image")
+    by_batch = build_detector("retinanet", **SMALL, retinanet_loss_normalization="batch")
+    by_batch.load_state_dict(by_image.state_dict())
+    for m in (by_image, by_batch):
+        m.train()
+        for mod in m.modules():  # sem pesos a normalização é treinável; fixa para o lote não mudar as ativações
+            if isinstance(mod, torch.nn.BatchNorm2d):
+                mod.eval()
+    li, lb = by_image(images, targets), by_batch(images, targets)
+    # na imagem positiva só, as duas normalizações coincidem
+    pi, pb = by_image(images[:1], targets[:1]), by_batch(images[:1], targets[:1])
+    assert pb["classification"].item() == pytest.approx(pi["classification"].item(), rel=1e-4)
+    assert pb["bbox_regression"].item() == pytest.approx(pi["bbox_regression"].item(), rel=1e-4)
+    # com a negativa, o padrão do torchvision dilui a regressão pela metade; a versão em lote não
+    assert lb["bbox_regression"].item() == pytest.approx(pi["bbox_regression"].item(), rel=1e-4)
+    assert li["bbox_regression"].item() == pytest.approx(pi["bbox_regression"].item() / 2, rel=1e-4)
+    # classificação: a negativa sozinha tem perda ni (soma das âncoras de fundo / 1)
+    ni = by_image(images[1:], targets[1:])["classification"].item()
+    assert li["classification"].item() == pytest.approx((pi["classification"].item() + ni) / 2, rel=1e-4)
+    # em lote, a parcela da negativa é dividida pelas âncoras positivas do lote (> 1)
+    assert 0 < lb["classification"].item() - pb["classification"].item() < ni

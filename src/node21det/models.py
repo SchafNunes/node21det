@@ -7,12 +7,27 @@ A classe nódulo é o rótulo 1 nos alvos e nas saídas dos dois. A Faster R-CNN
 tem a classe fundo explícita (num_classes=2). A RetinaNet classifica por sigmoide
 sem classe fundo, então é construída com uma classe só e o Detector desloca os
 rótulos na entrada e na saída.
+
+Normalização das perdas da RetinaNet. O torchvision divide a perda de cada
+imagem pelo número de âncoras positivas daquela imagem e tira a média sobre o
+lote. Numa radiografia negativa não há âncora positiva: a perda focal de todas
+as âncoras de fundo é dividida por 1, e as negativas (77% do treino) dominam o
+gradiente. Com essa normalização a RetinaNet não aprendeu a detectar
+(Tcc/EXPERIMENTOS.md, E9). A receita de treino do torchvision para o COCO
+descarta imagens sem anotação, e por isso a normalização por imagem não causa
+problema lá. Aqui as perdas são somadas sobre o lote e divididas pelo total de
+âncoras positivas do lote, como no Detectron2 (sem a média móvel do
+denominador que ele usa).
 """
+
+import types
 
 import torch
 from torch import nn
 from torchvision.models import ResNet50_Weights
 from torchvision.models.detection import fasterrcnn_resnet50_fpn, retinanet_resnet50_fpn
+from torchvision.models.detection._utils import _box_loss
+from torchvision.ops import sigmoid_focal_loss
 
 ARCHS = ("faster_rcnn", "retinanet")
 
@@ -31,6 +46,27 @@ class Detector(nn.Module):
         return out
 
 
+def _classification_loss_batch(self, targets, head_outputs, matched_idxs):
+    total, num_foreground = 0.0, 0
+    for t, logits, matched in zip(targets, head_outputs["cls_logits"], matched_idxs):
+        fg = matched >= 0
+        num_foreground += int(fg.sum())
+        gt = torch.zeros_like(logits)
+        gt[fg, t["labels"][matched[fg]]] = 1.0
+        valid = matched != self.BETWEEN_THRESHOLDS
+        total = total + sigmoid_focal_loss(logits[valid], gt[valid], reduction="sum")
+    return total / max(1, num_foreground)
+
+
+def _regression_loss_batch(self, targets, head_outputs, anchors, matched_idxs):
+    total, num_foreground = 0.0, 0
+    for t, reg, anc, matched in zip(targets, head_outputs["bbox_regression"], anchors, matched_idxs):
+        fg = torch.where(matched >= 0)[0]
+        num_foreground += fg.numel()
+        total = total + _box_loss(self._loss_type, self.box_coder, anc[fg], t["boxes"][matched[fg]], reg[fg])
+    return total / max(1, num_foreground)
+
+
 def build_detector(
     arch: str,
     pretrained_backbone: bool = True,
@@ -40,6 +76,7 @@ def build_detector(
     detections_per_image: int = 100,
     min_size: int = 800,
     max_size: int = 1333,
+    retinanet_loss_normalization: str = "batch",
 ) -> Detector:
     weights_backbone = ResNet50_Weights.IMAGENET1K_V1 if pretrained_backbone else None
     common = dict(
@@ -66,6 +103,12 @@ def build_detector(
             detections_per_img=detections_per_image,
             **common,
         )
+        if retinanet_loss_normalization == "batch":
+            head = net.head
+            head.classification_head.compute_loss = types.MethodType(_classification_loss_batch, head.classification_head)
+            head.regression_head.compute_loss = types.MethodType(_regression_loss_batch, head.regression_head)
+        elif retinanet_loss_normalization != "image":
+            raise ValueError(f"retinanet_loss_normalization: 'batch' ou 'image', veio {retinanet_loss_normalization!r}")
         return Detector(arch, net, label_offset=1)
     raise ValueError(f"arquitetura desconhecida: {arch!r}; opções: {ARCHS}")
 

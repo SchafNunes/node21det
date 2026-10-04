@@ -20,6 +20,7 @@ class ModelConfig:
     detections_per_image: int = 100
     min_size: int = 800
     max_size: int = 1333
+    retinanet_loss_normalization: str = "batch"  # "image" = padrão do torchvision (E9)
 
 
 @dataclass
