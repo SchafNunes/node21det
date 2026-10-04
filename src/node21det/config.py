@@ -49,6 +49,7 @@ class TrainConfig:
 class RunConfig:
     name: str = "run"
     enhancement: str = "none"
+    enhancement_params: dict = field(default_factory=dict)
     model: ModelConfig = field(default_factory=ModelConfig)
     optim: OptimConfig = field(default_factory=OptimConfig)
     train: TrainConfig = field(default_factory=TrainConfig)
@@ -63,6 +64,7 @@ def load_config(path: str | Path) -> RunConfig:
     return RunConfig(
         name=raw.get("name", Path(path).stem),
         enhancement=raw.get("enhancement", "none"),
+        enhancement_params=raw.get("enhancement_params", {}),
         model=ModelConfig(**raw.get("model", {})),
         optim=OptimConfig(**raw.get("optim", {})),
         train=TrainConfig(**raw.get("train", {})),

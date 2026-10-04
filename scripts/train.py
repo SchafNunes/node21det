@@ -22,6 +22,7 @@ from torch.utils.data import DataLoader
 
 from node21det.config import load_config
 from node21det.data.dataset import NoduleDataset, collate
+from node21det.data.enhancement import build_enhancement
 from node21det.data.metadata import boxes_by_image, load_metadata
 from node21det.data.splits import select
 from node21det.data.transforms import build_transforms
@@ -51,8 +52,6 @@ def main():
     args = p.parse_args()
 
     cfg = load_config(args.config)
-    if cfg.enhancement != "none":
-        raise NotImplementedError("realce de contraste ainda não implementado")
     if args.mode != "select" and not args.epochs:
         p.error("--epochs é obrigatório nos modos fold e final")
     if args.mode == "fold" and args.fold is None:
@@ -76,12 +75,14 @@ def main():
     print(f"treino: {len(train_names)} imagens | avaliação: {len(val_names)} imagens")
 
     t = cfg.train
-    train_ds = NoduleDataset(args.images, train_names, boxes, build_transforms(cfg.augmentation))
+    enhance = build_enhancement(cfg.enhancement, cfg.enhancement_params)
+    print(f"realce: {cfg.enhancement} {cfg.enhancement_params or ''}")
+    train_ds = NoduleDataset(args.images, train_names, boxes, build_transforms(cfg.augmentation), enhance)
     train_loader = DataLoader(train_ds, batch_size=t.batch_size, shuffle=True, num_workers=t.num_workers,
                               collate_fn=collate, pin_memory=device.type == "cuda")
     eval_loader = None
     if val_names:
-        eval_loader = DataLoader(NoduleDataset(args.images, val_names, boxes), batch_size=t.batch_size,
+        eval_loader = DataLoader(NoduleDataset(args.images, val_names, boxes, enhance=enhance), batch_size=t.batch_size,
                                  shuffle=False, num_workers=t.num_workers, collate_fn=collate)
 
     m = cfg.model

@@ -24,18 +24,24 @@ def read_image(path: str | Path) -> np.ndarray:
 
 
 class NoduleDataset(Dataset):
-    def __init__(self, image_dir, img_names: list[str], boxes: dict[str, np.ndarray], transforms=None):
+    def __init__(self, image_dir, img_names: list[str], boxes: dict[str, np.ndarray], transforms=None,
+                 enhance=None):
+        """enhance: realce de contraste aplicado à radiografia antes do aumento de dados (treino e avaliação)."""
         self.image_dir = Path(image_dir)
         self.img_names = list(img_names)
         self.boxes = boxes
         self.transforms = transforms
+        self.enhance = enhance
 
     def __len__(self):
         return len(self.img_names)
 
     def __getitem__(self, idx):
         name = self.img_names[idx]
-        image = torch.from_numpy(read_image(self.image_dir / name)).unsqueeze(0)
+        image = read_image(self.image_dir / name)
+        if self.enhance is not None:
+            image = self.enhance(image)
+        image = torch.from_numpy(image).unsqueeze(0)
         boxes = torch.as_tensor(self.boxes[name], dtype=torch.float32).reshape(-1, 4)
         target = {
             "boxes": boxes,
