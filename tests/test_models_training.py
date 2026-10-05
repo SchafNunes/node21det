@@ -132,3 +132,21 @@ def test_retinanet_batch_normalization_weights_negatives_by_batch_foreground():
     assert li["classification"].item() == pytest.approx((pi["classification"].item() + ni) / 2, rel=1e-4)
     # em lote, a parcela da negativa é dividida pelas âncoras positivas do lote (> 1)
     assert 0 < lb["classification"].item() - pb["classification"].item() < ni
+
+
+def test_evaluate_run_uses_saved_config_and_writes_predictions(tiny_data, tmp_path):
+    from node21det.inference import evaluate_run
+
+    cfg = _cfg()
+    cfg.model.min_size = cfg.model.max_size = 128
+    cfg.enhancement, cfg.enhancement_params = "clahe", {"clip_limit": 2.0, "tile_grid": 8}
+    out = tmp_path / "run"
+    fit(cfg, _model(), tiny_data, None, out, torch.device("cpu"), max_epochs=1)
+    ds = tiny_data.dataset
+    metrics, curve, preds = evaluate_run(out, ds.image_dir, ds.boxes, ds.img_names, checkpoint="last.pt",
+                                         num_workers=0)
+    assert metrics["enhancement"] == "clahe" and metrics["epoch"] == 0
+    assert {"mean_sens", "rank", "auc", "auc_outside_nodules"} <= set(metrics)
+    assert list(preds.columns) == ["img_name", "image_positive", "x1", "y1", "x2", "y2", "score", "is_tp"]
+    assert set(preds["img_name"]) <= set(ds.img_names)
+    assert (curve["fps_per_image"].diff().dropna() >= 0).all()

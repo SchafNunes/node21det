@@ -32,5 +32,7 @@ python scripts/train.py --config configs/frcnn_none.yaml --mode select \
 
 Interrompido, o mesmo comando retoma de `RUNS/<execução>/last.pt`.
 
+Avaliação de uma execução: `scripts/evaluate.py --run RUNS/<execução> --split test` (o teste, uma única vez, com o modelo final).
+
 Modos de `train.py`: `select` (treino/validação, etapas 1 e 2), `fold --fold k --epochs N`
 e `final --epochs N` (etapa 3).
