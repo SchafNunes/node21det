@@ -15,6 +15,9 @@ dependencies = [
 ]
 
 [dependency-groups]
+analysis = [
+    "matplotlib>=3.10.9",
+]
 dev = ["pytest"]
 
 [build-system]
