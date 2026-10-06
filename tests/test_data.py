@@ -152,3 +152,13 @@ def test_balanced_configs_differ_only_in_sampling():
         assert bal.train.balanced_sampling and not base.train.balanced_sampling
         bal.train.balanced_sampling, bal.name = False, base.name
         assert bal.to_dict() == base.to_dict()
+
+
+def test_clip_configs_differ_only_in_gradient_clipping():
+    from node21det.config import load_config
+
+    for arch in ("frcnn", "retinanet"):
+        bal, clip = load_config(f"configs/{arch}_balanced.yaml"), load_config(f"configs/{arch}_balanced_clip.yaml")
+        assert clip.optim.grad_clip_norm == 3.0 and bal.optim.grad_clip_norm is None
+        clip.optim.grad_clip_norm, clip.name = None, bal.name
+        assert clip.to_dict() == bal.to_dict()
