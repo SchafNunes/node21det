@@ -55,3 +55,17 @@ class NoduleDataset(Dataset):
 
 def collate(batch):
     return tuple(zip(*batch))
+
+
+def balanced_sampler(img_names: list[str], boxes: dict[str, np.ndarray]):
+    """Sorteio com reposição e peso inverso à contagem de cada classe (positiva/negativa):
+    em média metade de cada lote é de radiografias com nódulo. O número de amostras por
+    época é o tamanho do conjunto, para manter a duração da época. Usa o gerador global
+    do torch, cujo estado é salvo no checkpoint."""
+    from torch.utils.data import WeightedRandomSampler
+
+    positive = np.array([len(boxes[n]) > 0 for n in img_names])
+    n_pos, n_neg = positive.sum(), (~positive).sum()
+    weights = np.where(positive, 1.0 / max(n_pos, 1), 1.0 / max(n_neg, 1))
+    return WeightedRandomSampler(torch.as_tensor(weights, dtype=torch.double), num_samples=len(img_names),
+                                 replacement=True)

@@ -128,3 +128,27 @@ def test_read_image_rejects_stack(tmp_path):
     sitk.WriteImage(sitk.GetImageFromArray(np.ones((3, 8, 8), np.uint16)), str(tmp_path / "s.mha"))
     with pytest.raises(ValueError):
         read_image(tmp_path / "s.mha")
+
+
+def test_balanced_sampler_draws_half_positives():
+    from node21det.data.dataset import balanced_sampler
+
+    names = [f"p{i}" for i in range(23)] + [f"n{i}" for i in range(77)]
+    boxes = {n: (np.array([[0, 0, 5, 5]], np.float32) if n.startswith("p") else np.zeros((0, 4), np.float32))
+             for n in names}
+    torch.manual_seed(0)
+    sampler = balanced_sampler(names, boxes)
+    assert len(sampler) == len(names)  # a época mantém o tamanho do conjunto
+    draws = [names[i] for _ in range(50) for i in sampler]
+    frac = np.mean([d.startswith("p") for d in draws])
+    assert 0.46 < frac < 0.54
+
+
+def test_balanced_configs_differ_only_in_sampling():
+    from node21det.config import load_config
+
+    for arch in ("frcnn", "retinanet"):
+        base, bal = load_config(f"configs/{arch}_none.yaml"), load_config(f"configs/{arch}_balanced.yaml")
+        assert bal.train.balanced_sampling and not base.train.balanced_sampling
+        bal.train.balanced_sampling, bal.name = False, base.name
+        assert bal.to_dict() == base.to_dict()

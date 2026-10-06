@@ -21,7 +21,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from node21det.config import load_config
-from node21det.data.dataset import NoduleDataset, collate
+from node21det.data.dataset import NoduleDataset, balanced_sampler, collate
 from node21det.data.enhancement import build_enhancement
 from node21det.data.metadata import boxes_by_image, load_metadata
 from node21det.data.splits import select
@@ -78,7 +78,11 @@ def main():
     enhance = build_enhancement(cfg.enhancement, cfg.enhancement_params)
     print(f"realce: {cfg.enhancement} {cfg.enhancement_params or ''}")
     train_ds = NoduleDataset(args.images, train_names, boxes, build_transforms(cfg.augmentation), enhance)
-    train_loader = DataLoader(train_ds, batch_size=t.batch_size, shuffle=True, num_workers=t.num_workers,
+    sampler = balanced_sampler(train_names, boxes) if t.balanced_sampling else None
+    if sampler is not None:
+        print("sorteio balanceado: ~50% de radiografias positivas por lote")
+    train_loader = DataLoader(train_ds, batch_size=t.batch_size, shuffle=sampler is None, sampler=sampler,
+                              num_workers=t.num_workers,
                               collate_fn=collate, pin_memory=device.type == "cuda")
     eval_loader = None
     if val_names:

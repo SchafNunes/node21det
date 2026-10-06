@@ -1,0 +1,36 @@
+# Comparação de arquiteturas com sorteio balanceado (D38): Faster R-CNN.
+# Igual a frcnn_none.yaml exceto train.balanced_sampling.
+name: frcnn_balanced
+enhancement: none
+
+model:
+  arch: faster_rcnn
+  pretrained_backbone: true
+  trainable_backbone_layers: 3
+  nms_threshold: 0.3
+  score_threshold: 0.0
+  detections_per_image: 100
+
+optim:
+  lr: 1.0e-2          # 5e-3 (baseline, testado com batch 6) x 12/6, escala linear
+  momentum: 0.9
+  weight_decay: 5.0e-4
+  lr_step_epochs: 10  # CONFERIR após a primeira execução
+  lr_gamma: 0.1
+
+train:
+  max_epochs: 30
+  batch_size: 12   # pico de 4,7 GB com 6 numa T4 (piloto); 12 deixa folga
+  num_workers: 2
+  amp: true
+  early_stopping_patience: 5  # CONFERIR
+  seed: 42
+  balanced_sampling: true
+
+augmentation:
+  hflip_p: 0.5
+  brightness_contrast_p: 0.5  # valores fotométricos a confirmar
+  brightness: 0.1
+  contrast: 0.1
+  noise_p: 0.3
+  noise_std: 0.01
