@@ -1,4 +1,4 @@
-# Comparação de arquiteturas com sorteio balanceado (D38): Faster R-CNN.
+# Comparação de arquiteturas com sorteio balanceado (D41): Faster R-CNN.
 # Igual a frcnn_none.yaml exceto train.balanced_sampling.
 name: frcnn_balanced
 enhancement: none

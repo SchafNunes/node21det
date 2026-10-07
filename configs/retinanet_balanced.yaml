@@ -1,4 +1,4 @@
-# Comparação de arquiteturas com sorteio balanceado (D38): RetinaNet.
+# Comparação de arquiteturas com sorteio balanceado (D41): RetinaNet.
 # Igual a retinanet_none.yaml exceto train.balanced_sampling.
 name: retinanet_balanced
 enhancement: none

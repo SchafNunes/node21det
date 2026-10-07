@@ -1,4 +1,4 @@
-# Comparação de arquiteturas com sorteio balanceado e recorte do gradiente (D39).
+# Comparação de arquiteturas com sorteio balanceado e recorte do gradiente (D42).
 # Igual a frcnn_balanced.yaml exceto optim.grad_clip_norm.
 name: frcnn_balanced_clip
 enhancement: none

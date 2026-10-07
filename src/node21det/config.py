@@ -43,7 +43,7 @@ class TrainConfig:
     amp: bool = True
     early_stopping_patience: int = 5
     seed: int = 42
-    balanced_sampling: bool = False  # lotes com ~50% de radiografias positivas, como na solução MTEC (D38)
+    balanced_sampling: bool = False  # lotes com ~50% de radiografias positivas, como na solução MTEC (D41)
 
 
 @dataclass

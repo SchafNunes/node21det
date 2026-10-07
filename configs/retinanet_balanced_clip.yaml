@@ -1,4 +1,4 @@
-# Comparação de arquiteturas com sorteio balanceado e recorte do gradiente (D39).
+# Comparação de arquiteturas com sorteio balanceado e recorte do gradiente (D42).
 # Igual a retinanet_balanced.yaml exceto optim.grad_clip_norm.
 name: retinanet_balanced_clip
 enhancement: none
