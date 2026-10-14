@@ -47,11 +47,12 @@ def _rng_state():
 
 
 def _set_rng_state(state):
+    # O checkpoint é carregado com map_location=device; os estados do gerador precisam voltar à CPU.
     random.setstate(state["python"])
     np.random.set_state(state["numpy"])
-    torch.set_rng_state(state["torch"])
+    torch.set_rng_state(state["torch"].cpu())
     if state["cuda"] is not None and torch.cuda.is_available():
-        torch.cuda.set_rng_state_all(state["cuda"])
+        torch.cuda.set_rng_state_all([s.cpu() for s in state["cuda"]])
 
 
 def _atomic_save(obj, path: Path):
